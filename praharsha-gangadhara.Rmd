@@ -1,0 +1,163 @@
+---
+title: "Week 3: Data Cleaning and Visualization"
+author: "Praharsha Gangadhara"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(readr)
+library(ggplot2)
+library(stringr)
+library(tidyverse)
+```
+
+## Question 1: Customer Data
+
+### (a) Data Cleaning
+
+```{r load-and-clean}
+library(dplyr)
+library(readr)
+library(stringr)
+
+data <- read_csv("C:/Users/praha/Downloads/question1data.csv")
+
+glimpse(data)
+summary(data)
+colnames(data)
+
+colSums(is.na(data))
+
+df_clean <- data %>%
+  filter(!(is.na(is.employed) & is.na(housing.type) & is.na(recent.move) & is.na(num.vehicles)))     # remove rows with all NA
+
+df_clean <- df_clean %>%
+  mutate(
+    is.employed = ifelse(is.na(is.employed), "Unknown", is.employed),
+    housing.type = ifelse(is.na(housing.type), "Not Specified", housing.type),
+    recent.move = ifelse(is.na(recent.move), "Not Specified", recent.move),
+    num.vehicles = ifelse(is.na(num.vehicles), 0, num.vehicles)
+  )
+
+
+write_csv(df_clean, "cleaned_question1data.csv")
+```
+
+### (b-i) Number of Customers by State
+
+```{r}
+df_clean %>%
+  count(state.of.res, sort = TRUE) %>%
+  ggplot(aes(x = reorder(state.of.res, n), y = n)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +
+  labs(title = "Number of Customers by State", x = "State", y = "Customer Count") +
+  theme_minimal()
+```
+
+### (b-ii) Scatter Plot - Income vs Age
+
+```{r}
+ggplot(df_clean, aes(x = age, y = income)) +
+  geom_point(alpha = 0.5, color = "Medium Violet Red") +
+  geom_smooth(method = "loess", color = "Slate Blue", se = FALSE) +
+  labs(title = "Income vs. Age", x = "Age", y = "Income") +
+  theme_minimal()
+```
+
+### (b-iii) Income vs Age by Housing Type
+
+```{r}
+ggplot(df_clean, aes(x = age, y = income, color = housing.type)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "loess", se = FALSE) +
+  labs(title = "Income vs. Age by Housing Type", x = "Age", y = "Income") +
+  theme_minimal()
+```
+
+------------------------------------------------------------------------
+
+## Question 2: Laptop Sales
+
+### (a) Average Retail Price by Store
+
+```{r}
+laptop_data <- read_csv("LaptopSalesJanuary2008.csv")
+
+avg_price_by_store <- laptop_data %>%
+  group_by(`Store Postcode`) %>%
+  summarise(avg_price = mean(`Retail Price`, na.rm = TRUE)) %>%
+  arrange(desc(avg_price))
+
+ggplot(avg_price_by_store, aes(x = reorder(`Store Postcode`, avg_price), y = avg_price)) +
+  geom_bar(stat = "identity", fill = "tomato") +
+  coord_flip() +
+  labs(title = "Average Retail Price by Store", x = "Store (Postcode)", y = "Avg Price") +
+  theme_minimal()
+```
+
+### (b) Boxplot of Retail Prices
+
+```{r}
+laptop_data <- laptop_data %>%
+  mutate(`Store Postcode` = as.factor(`Store Postcode`))
+
+ggplot(laptop_data, aes(x = `Store Postcode`, y = `Retail Price`)) +
+  geom_boxplot(fill = "skyblue") +
+  labs(title = "Retail Price Distribution by Store", x = "Store (Postcode)", y = "Retail Price") +
+  theme_minimal()
+```
+
+------------------------------------------------------------------------
+
+## Question 3: National Park Trends
+
+### Q1: Top 10 Most Visited Parks
+
+```{r}
+parks <- read_csv("US-National-Parks_Use_1979-2023_By-Month.csv")
+
+top_parks <- parks %>%
+  group_by(ParkName) %>%
+  summarise(TotalVisits = sum(RecreationVisits, na.rm = TRUE)) %>%
+  arrange(desc(TotalVisits)) %>%
+  slice_head(n = 10)
+
+ggplot(top_parks, aes(x = reorder(ParkName, TotalVisits), y = TotalVisits)) +
+  geom_col(fill = "darkgreen") +
+  coord_flip() +
+  labs(title = "Top 10 Most Visited National Parks", x = "Park", y = "Total Visits") +
+  theme_minimal()
+```
+
+### Q2: Annual Trends in Visits
+
+```{r}
+yearly_visits <- parks %>%
+  group_by(Year) %>%
+  summarise(TotalVisits = sum(RecreationVisits, na.rm = TRUE))
+
+ggplot(yearly_visits, aes(x = Year, y = TotalVisits)) +
+  geom_line(color = "steelblue", size = 1.2) +
+  labs(title = "Total National Park Visits by Year", x = "Year", y = "Total Visits") +
+  theme_minimal()
+```
+
+### Q3: Monthly Trends in Visits
+
+```{r}
+parks <- parks %>%
+  mutate(MonthName = factor(month.name[Month], levels = month.name))
+
+monthly_trends <- parks %>%
+  group_by(MonthName) %>%
+  summarise(AverageVisits = mean(RecreationVisits, na.rm = TRUE))
+
+ggplot(monthly_trends, aes(x = MonthName, y = AverageVisits)) +
+  geom_col(fill = "skyblue") +
+  labs(title = "Average Monthly Visits to National Parks", x = "Month", y = "Average Visits") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
